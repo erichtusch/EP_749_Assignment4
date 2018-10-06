@@ -73,34 +73,56 @@ make.table.1 <- function(df,group.var,demog.var){
               print.df = print.df))
 }
 
-##### table 2 function  #####
 ##### table 3 function  #####
+make.2x2.table <- function(df,exposure,outcome){
+  df %>% select_at(vars(one_of(exposure,outcome))) %>% 
+    # only Yes and No for both Prior Cancer and Flu Shot Outcome
+    filter_at(vars(one_of(exposure)), any_vars(. %in% c("Yes","No"))) %>%
+    filter_at(vars(one_of(outcome)),any_vars(. %in% 1:2)) %>%
+    # count per cell
+    group_by_all() %>% count() %>%
+    # join flu shot value labels
+    left_join(table1.factor.value.label.df %>% filter_at(vars(one_of("Factor")),any_vars(grepl(outcome,.))),
+              by=setNames("value",outcome)) %>%
+    # clean up
+    ungroup() %>% select_at(vars(-one_of("Factor",outcome))) %>% 
+    unite(vacc_outcome,c("label","Factor.desc"),sep=" ") %>%
+    mutate_at(vars(one_of(exposure)),funs(paste0(.,"_Prior_Cancer"))) %>%
+    # spread for 2x2
+    group_by_at(vars(one_of(exposure))) %>% spread(exposure,n) %>%
+    return()
+}
 
 ##### read in file  #####
 cat('\nchoose file')
 fp <- file.choose()
 cat('\nreading excel file')
 cancer.df <- read.xlsx(file = fp,sheetName = "Raw Data",as.data.frame = T,header = T,stringsAsFactors = F)
+
 ##### process df  #####
 ##    since age included non-age numbers, DON'T USE AGE
 cancer.df <- cancer.df %>% mutate(IDATE = as.Date(IDATE,format = "%m%d%Y"))
-##### create tables #####
-demog.var <- c("SEX","FLUSHOT3","X_AGE_G","X_RACE_G",
-               "MARITAL","X_EDUCAG","X_INCOMG","HLTHPLAN",
+##### create table 1 #####
+demog.var <- c("SEX","FLUSHOT3","PNEUVAC3",
+               "X_AGE_G","X_RACE_G",
+               "MARITAL","X_EDUCAG",
+               "X_INCOMG","HLTHPLAN",
                "SHINGLES","TNSARCV")
 group.var <- "PRIORCNCR"
-table1 <- make.table.1(cancer.df %>% mutate_at(vars(one_of(group.var)),funs(paste("Prior Cancer:",.,sep=" "))),
+table1 <- make.table.1(cancer.df %>% mutate_at(vars(one_of(group.var)),funs(paste("Prior Cancer:",.,"n (%)",sep=" "))),
                        group.var,demog.var)
 ##  replace factor values with meaningful info
-#     make data frame for each factor, 
-#     then bind all data frames into a factor values df
+#     make list of data frames for each factor containing values and descriptions
 #     then join factor values df to print table
-cat('\ncreating factor.value.label.list')
-factor.value.label.list = list(
+cat('\ncreating table1.factor.value.label.list')
+table1.factor.value.label.list = list(
   FLUSHOT3.values.df = data.frame(value = c(1,2,7,9),
                                   label = c("Yes","No","Don't know / Refused","Refused"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "FLUSHOT3",Factor.desc = "Flu shot in past 12 mo."),
+  PNEUVAC3.values.df = data.frame(value = c(1,2,7,9),label = c("Yes","No","Don't know / Refused","Refused"),
+                                  stringsAsFactors = F) %>%
+    mutate(Factor = "PNEUVAC3",Factor.desc = "Pneumonia shot ever"),
   X_AGE_G.values.df = data.frame(value = c(1,2,3,4,5,6),
                                  label = c("18-24 years",
                                            "25-34 years",
@@ -112,34 +134,116 @@ factor.value.label.list = list(
   SEX.values.df = data.frame(value = c(1,2),label=c("Male","Female"),stringsAsFactors = F) %>%
     mutate(Factor = "SEX",Factor.desc = "Sex"),
   #TODO# when I get labels for these values, fill them in and add them to the method.
-  X_RACE_G.values.df = data.frame(value = c(1,2,3,4,5,NA)) %>%
+  X_RACE_G.values.df = data.frame(value = c(1,2,3,4,5,NA),
+                                  label = c(NA,NA,NA,NA,NA,"Don't know / Refused"),
+                                  stringsAsFactors = F) %>%
     mutate(Factor = "X_RACE_G",Factor.desc = "Race Group"),
-  MARITAL.values.df = data.frame(value = c(1,2,3,4,5,6,9)) %>%
+  MARITAL.values.df = data.frame(value = c(1,2,3,4,5,6,9),stringsAsFactors = F) %>%
     mutate(Factor = "MARITAL",Factor.desc = "Marital Status"),
-  X_EDUCAG.values.df = data.frame(value = c(1,2,3,4,9)) %>%
+  X_EDUCAG.values.df = data.frame(value = c(1,2,3,4,9),stringsAsFactors = F) %>%
     mutate(Factor = "X_EDUCAG",Factor.desc = "Education level"),
-  X_INCOMG.values.df = data.frame(value = c(1,2,3,4,5,9)) %>%
+  X_INCOMG.values.df = data.frame(value = c(1,2,3,4,5,9),stringsAsFactors = F) %>%
     mutate(Factor = "X_INCOMG",Factor.desc = "Income Group"),
   HLTHPLAN.values.df = data.frame(value = c(1,2,7,9),
-                                  label=c("Yes","No","Don't know / Refused","Refused")) %>%
+                                  label=c("Yes","No","Don't know / Refused","Refused"),stringsAsFactors = F) %>%
     mutate(Factor = "HLTHPLAN",Factor.desc = "Health plan"),
   SHINGLES.values.df = data.frame(value = c(1,2,7,NA),
-                                  label=c("Yes","No","Don't know / Refused","N/A")) %>%
+                                  label=c("Yes","No","Don't know / Refused","no data"),stringsAsFactors = F) %>%
     mutate(Factor = "SHINGLES",Factor.desc = "Shingles vaccine"),
   TNSARCV.values.df = data.frame(value = c(1,2,7,9,NA),
-                                 label=c("Yes","No","Don't know / Refused",'Refused',"N/A")) %>%
+                                 label=c("Yes","No","Don't know / Refused",'Refused',"no data"),stringsAsFactors = F) %>%
     mutate(Factor = "TNSARCV",Factor.desc = "Tetanus vacc. within 10 y.")
 )
 ##  combine values with labels into a factor values table
-cat('\nbinding list dfs into single factor.value.label.df')
-factor.value.label.df <- bind_rows(factor.value.label.list[[1]],factor.value.label.list[[2]])
-for(i in 3:length(factor.value.label.list)){
-  factor.value.label.df <- bind_rows(factor.value.label.df,factor.value.label.list[[i]])
+cat('\nbinding list dfs into single table1.factor.value.label.df')
+table1.factor.value.label.df <- bind_rows(table1.factor.value.label.list[[1]],table1.factor.value.label.list[[2]])
+for(i in 3:length(table1.factor.value.label.list)){
+  table1.factor.value.label.df <- bind_rows(table1.factor.value.label.df,table1.factor.value.label.list[[i]])
 }
 table1$print.df.formatted <- left_join(table1$print.df,
-                                       factor.value.label.df %>% mutate(value = as.character(value)),
+                                       table1.factor.value.label.df %>% mutate(value = as.character(value)),
                                        by=c("Factor"="Factor","value"="value")) %>% 
   mutate(Factor.desc = coalesce(Factor.desc,Factor),
          label = coalesce(label,value)) %>%
   select(Factor,Factor.desc,label,everything(),-value)
+##### create table 2  #####
+##  info about cancer survivors ONLY
+#     e.g. type of cancer
+##  features: CNCRAGE,CNCRTYPE,
+##  create CNCRAGE_G
+cancer.survivor.df <- cancer.df %>% filter(PRIORCNCR=="Yes") %>%
+  mutate(CNCRAGE_G = paste(if_else(is.na(CNCRAGE),"Don't know / Refused",
+                             if_else(CNCRAGE >=65,"65+",
+                                     if_else(CNCRAGE >= 55,"55-64",
+                                             if_else(CNCRAGE >= 45,"45-54",
+                                                     if_else(CNCRAGE >= 35,"35-44",
+                                                             if_else(CNCRAGE >= 25,"25-34",
+                                                                     if_else(CNCRAGE >= 15,"15-24","0-14")
+                                                             )))))),"years",sep=" "))
+table2 <- make.table.1(cancer.survivor.df,"PRIORCNCR",c("CNCRAGE_G","CNCRTYPE"))
+#TODO# add labels for CNCRTYPE labels
+table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = c("0-14","15-24",
+                                                                                  "25-34","35-44",
+                                                                                  "45-54","55-64",
+                                                                                  "65+","Don't know / Refused"),
+                                                                        stringsAsFactors = F) %>%
+                                         mutate(Factor = "CNCRAGE_G",Factor.desc = "Age Told Had Cancer",
+                                                label = value),
+                                       CNCRTYPE.values.df = data.frame(value = c(as.character(c(1:20,23:29,77,99)),
+                                                                                 NA),
+                                                                       stringsAsFactors = F) %>%
+                                         mutate(Factor = "CNCRTYPE",Factor.desc = "Type of Cancer",label = NA))
+##  combine table 2 factor levels
+cat('\nbinding list dfs into single table2.factor.value.label.df')
+table2.factor.value.label.df <- bind_rows(table2.factor.value.label.list[[1]],table2.factor.value.label.list[[2]])
+if(length(table2.factor.value.label.list)>=3){
+  for(i in 3:length(table2.factor.value.label.list)){
+    table2.factor.value.label.df <- bind_rows(table2.factor.value.label.df,table2.factor.value.label.list[[i]])
+  }
+}
+
+##  join print formatting to table2
+table2$print.df.formatted <- left_join(table2$print.df,
+                                       table2.factor.value.label.df %>% mutate(value = as.character(value)),
+                                       by=c("Factor"="Factor","value"="value")) %>%
+  mutate(value = coalesce(value,"Don't know / Refused"),
+         label = coalesce(label,value)) %>%
+  select(Factor,Factor.desc,label,`n (%)` = Yes)
+
+##### table 3 #####
+##  relationship between cancer status and influenza vaccine
+##  2x2 ratio
+##  odds ratio
+# #### You will need to decide which associations you want to present 
+#       (i.e.; association between cancer survivorship and influenza vaccination, 
+#       pneumococcal vaccination, both, etc.; and absolute or relative measures of the associations), 
+#       and construct your table in such a way to allow the reader to understand what you are presenting.
+#       My expectation is that all students will be able to present unadjusted (crude) associations; 
+#       I am not expecting anyone to be able to adjust for confounders in their analysis at this time. 
+#       However, if someone is interested in controlling for confounders (e.g.; via logistic regression), 
+#       please check in with me to make sure we are on the same page.
+#  Please pay attention to things like titles, headings, labels, footnotes, significant digits, abbreviations, etc.
+##  Prior Cancer (exposure) vs. Flu shot Outcome (exposure)
+cat('\nwriting 2x2 tables for FLUSHOT3 and PNEUVAC3')
+prior.cancer.2x2s <- list(flu.vacc = make.2x2.table(cancer.df,"PRIORCNCR","FLUSHOT3"),
+                          pneu.vacc = make.2x2.table(cancer.df,"PRIORCNCR","PNEUVAC3"),
+                          shingles.vacc = make.2x2.table(cancer.df,'PRIORCNCR',"SHINGLES"),
+                          tetanus.vacc = make.2x2.table(cancer.df,'PRIORCNCR',"TNSARCV"))
+## totaling ##    
+prior.cancer.2x2s <- lapply(prior.cancer.2x2s,function(x) x %>%
+                              rowwise() %>% mutate(total = No_Prior_Cancer + Yes_Prior_Cancer) %>%
+                              bind_rows(data.frame(vacc_outcome = "total",stringsAsFactors = F,
+                                                   No_Prior_Cancer = colSums(.[,2:4])[["No_Prior_Cancer"]],
+                                                   Yes_Prior_Cancer = colSums(.[,2:4])[["Yes_Prior_Cancer"]],
+                                                   total = colSums(.[,2:4])[["total"]])))
+##### risk ratios #####
+##  (exposure positive & outcome positive / outcome total) / (exposure negative & outcome positive / outcome total)
+##TODO## formularize
+prior.cancer.2x2s$flu.RR <- 
+  (prior.cancer.2x2s$flu.vacc$Yes_Prior_Cancer[2] / prior.cancer.2x2s$flu.vacc$Yes_Prior_Cancer[3]) /
+  (prior.cancer.2x2s$flu.vacc$No_Prior_Cancer[2] / prior.cancer.2x2s$flu.vacc$No_Prior_Cancer[3])
+prior.cancer.2x2s$pneu.RR <-
+  (prior.cancer.2x2s$pneu.vacc$Yes_Prior_Cancer[2] / prior.cancer.2x2s$pneu.vacc$Yes_Prior_Cancer[3]) /
+  (prior.cancer.2x2s$pneu.vacc$No_Prior_Cancer[2] / prior.cancer.2x2s$pneu.vacc$No_Prior_Cancer[3])
+
 ##### write tables  #####
