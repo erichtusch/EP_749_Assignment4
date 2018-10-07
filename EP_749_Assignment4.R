@@ -182,10 +182,11 @@ cancer.survivor.df <- cancer.df %>% filter(PRIORCNCR=="Yes") %>%
                                                              )))))),"years",sep=" "))
 table2 <- make.table.1(cancer.survivor.df,"PRIORCNCR",c("CNCRAGE_G","CNCRTYPE"))
 #TODO# add labels for CNCRTYPE labels
-table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = c("0-14","15-24",
+table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = paste(c("0-14","15-24",
                                                                                   "25-34","35-44",
                                                                                   "45-54","55-64",
                                                                                   "65+","Don't know / Refused"),
+                                                                                  "years",sep=" "),
                                                                         stringsAsFactors = F) %>%
                                          mutate(Factor = "CNCRAGE_G",Factor.desc = "Age Told Had Cancer",
                                                 label = value),
@@ -238,12 +239,63 @@ prior.cancer.2x2s <- lapply(prior.cancer.2x2s,function(x) x %>%
                                                    total = colSums(.[,2:4])[["total"]])))
 ##### risk ratios #####
 ##  (exposure positive & outcome positive / outcome total) / (exposure negative & outcome positive / outcome total)
-##TODO## formularize
-prior.cancer.2x2s$flu.RR <- 
-  (prior.cancer.2x2s$flu.vacc$Yes_Prior_Cancer[2] / prior.cancer.2x2s$flu.vacc$Yes_Prior_Cancer[3]) /
-  (prior.cancer.2x2s$flu.vacc$No_Prior_Cancer[2] / prior.cancer.2x2s$flu.vacc$No_Prior_Cancer[3])
-prior.cancer.2x2s$pneu.RR <-
-  (prior.cancer.2x2s$pneu.vacc$Yes_Prior_Cancer[2] / prior.cancer.2x2s$pneu.vacc$Yes_Prior_Cancer[3]) /
-  (prior.cancer.2x2s$pneu.vacc$No_Prior_Cancer[2] / prior.cancer.2x2s$pneu.vacc$No_Prior_Cancer[3])
+risk.ratios <- lapply(names(prior.cancer.2x2s),function(x) {
+  round((prior.cancer.2x2s[[x]]$Yes_Prior_Cancer[2] / prior.cancer.2x2s[[x]]$Yes_Prior_Cancer[3]) /
+          (prior.cancer.2x2s[[x]]$No_Prior_Cancer[2] / prior.cancer.2x2s[[x]]$No_Prior_Cancer[3]),digits = 2)
+}
+)
+names(risk.ratios) = names(prior.cancer.2x2s)
 
 ##### write tables  #####
+cat('\nwriting tables')
+ofp <- file.path(gsub(paste0("/",basename(fp)),"",fp),paste0("VaccineCancer_tables_",Sys.Date(),"_ET.xlsx"))
+cat('\nwriting table1')
+write.xlsx(as.data.frame(table1$print.df.formatted %>% select(-Factor)),file = ofp,
+           sheetName = "table1",col.names = T,row.names = F,append = F,showNA = F)
+cat('\nwriting table2')
+write.xlsx(as.data.frame(table2$print.df.formatted %>% select(-Factor)),file = ofp,
+           sheetName = "table2",col.names = T,row.names = F,append = T,showNA = F)
+cat('\nwriting 2x2 tables')
+foo <- sapply(names(prior.cancer.2x2s),function (x){
+  write.xlsx(as.data.frame(prior.cancer.2x2s[[x]]),file = ofp,
+             sheetName = x,col.names = T,row.names = F,append = T,showNA = F)
+})
+cat('\nwriting risk ratios')
+write.xlsx(as.data.frame(risk.ratios),file = ofp,
+           sheetName = "risk ratios",col.names = T,
+           row.names = F,append = T,showNA = F)
+##### write readme  #####
+###   write snippet for each table output to excel
+##  table 1
+table1.readme <- 
+  "Table 1 compares counts and proportions of factors across Prior Cancer groups, either Yes, No, or DoN.
+I'm taking DoN to mean Don't Know.
+'label' is level of factor.
+factors without labels will be defined upon getting a better data dictionary.
+"
+##  table 2
+table2.readme <- 
+  "Table 2 compares counts and proportions of factors within the Prior Cancer: Yes group ONLY.
+Cancer Age and Cancer Type are compared. Cancer Age is categorized into the same categories as Age.
+Type of cancer has no definition in data dictionary
+"
+##  2x2 tables
+prior.cancer.2x2s.readme <- 
+  "two by two tables take prior cancer status as exposure and vaccine history as outcome
+Only patients who had knowledge and chose to report both their cancer history and vaccine history are included
+(i.e. no Don't Know / Refused)
+"
+##  risk ratios
+risk.ratios.readme <- 
+  "Risk ratios take cancer history as exposure and vaccine history as outcome.
+Only patients who had knowledge and choose to report both their cancer history and vaccine history are included
+(i.e. no Don't Know / Refused; same as 2x2 tables)
+"
+
+readme.list <- list(table1.readme = table1.readme,
+                    table2.readme = table2.readme,
+                    prior.cancer.2x2s.readme = prior.cancer.2x2s.readme,
+                    risk.ratios.readme = risk.ratios.readme)
+write.xlsx(t(as.data.frame(readme.list)),file = ofp,
+           sheetName = "README2",col.names = F,
+           row.names = T,append = T,showNA = F)
