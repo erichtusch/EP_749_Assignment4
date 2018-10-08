@@ -133,16 +133,35 @@ table1.factor.value.label.list = list(
     mutate(Factor = "X_AGE_G",Factor.desc = "Age group"),
   SEX.values.df = data.frame(value = c(1,2),label=c("Male","Female"),stringsAsFactors = F) %>%
     mutate(Factor = "SEX",Factor.desc = "Sex"),
-  #TODO# when I get labels for these values, fill them in and add them to the method.
   X_RACE_G.values.df = data.frame(value = c(1,2,3,4,5,NA),
-                                  label = c(NA,NA,NA,NA,NA,"Don't know / Refused"),
+                                  label = c("White, non-Hispanic",
+                                            "Black, non-Hispanic",
+                                            "Hispanic",
+                                            "Other race, non-Hispanic",
+                                            "Multi-racial, non-Hispanic","Don't know / Refused"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "X_RACE_G",Factor.desc = "Race Group"),
-  MARITAL.values.df = data.frame(value = c(1,2,3,4,5,6,9),stringsAsFactors = F) %>%
+  MARITAL.values.df = data.frame(value = c(1,2,3,4,5,6,9),
+                                 label = c("Married","Divorced","Widowed","Separated","Never Married",
+                                           "A member of an unmarried couple","Refused"),
+                                 stringsAsFactors = F) %>%
     mutate(Factor = "MARITAL",Factor.desc = "Marital Status"),
-  X_EDUCAG.values.df = data.frame(value = c(1,2,3,4,9),stringsAsFactors = F) %>%
+  X_EDUCAG.values.df = data.frame(value = c(1,2,3,4,9),
+                                  label = c("Did not graduate High School",
+                                            "Graduated High School",
+                                            "Attended College or Technical School",
+                                            "Graduated from College or Technical School",
+                                            "Don't know/Not sure/Missing"),
+                                  stringsAsFactors = F) %>%
     mutate(Factor = "X_EDUCAG",Factor.desc = "Education level"),
-  X_INCOMG.values.df = data.frame(value = c(1,2,3,4,5,9),stringsAsFactors = F) %>%
+  X_INCOMG.values.df = data.frame(value = c(1,2,3,4,5,9),
+                                  label = c("Less than $15,000",
+                                            "$15,000 to less than $25,000",
+                                            "$25,000 to less than $35,000",
+                                            "$35,000 to less than $50,000",
+                                            "$50,000 or more",
+                                            "Don’t know/Not sure/Missing"),
+                                  stringsAsFactors = F) %>%
     mutate(Factor = "X_INCOMG",Factor.desc = "Income Group"),
   HLTHPLAN.values.df = data.frame(value = c(1,2,7,9),
                                   label=c("Yes","No","Don't know / Refused","Refused"),stringsAsFactors = F) %>%
@@ -181,7 +200,6 @@ cancer.survivor.df <- cancer.df %>% filter(PRIORCNCR=="Yes") %>%
                                                                      if_else(CNCRAGE >= 15,"15-24","0-14")
                                                              )))))),"years",sep=" "))
 table2 <- make.table.1(cancer.survivor.df,"PRIORCNCR",c("CNCRAGE_G","CNCRTYPE"))
-#TODO# add labels for CNCRTYPE labels
 table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = paste(c("0-14","15-24",
                                                                                   "25-34","35-44",
                                                                                   "45-54","55-64",
@@ -190,10 +208,36 @@ table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = 
                                                                         stringsAsFactors = F) %>%
                                          mutate(Factor = "CNCRAGE_G",Factor.desc = "Age Told Had Cancer",
                                                 label = value),
-                                       CNCRTYPE.values.df = data.frame(value = c(as.character(c(1:20,23:29,77,99)),
-                                                                                 NA),
+                                       CNCRTYPE.values.df = data.frame(value = as.character(c(1:30,77,99)),
+                                                                       label = c("Breast cancer",
+                                                                                 "Cervical cancer (cancer of the cervix)",
+                                                                                 "Endometrial cancer (cancer of the uterus)",
+                                                                                 "Ovarian cancer (cancer of the ovary)",
+                                                                                 "Head and neck cancer",
+                                                                                 "Oral cancer",
+                                                                                 "Pharyngeal (throat) cancer",
+                                                                                 "Thyroid","Larynx",
+                                                                                 "Colon (intestine) cancer",
+                                                                                 "Esophageal (esophagus)",
+                                                                                 "Liver cancer",
+                                                                                 "Pancreatic (pancreas) cancer",
+                                                                                 "Rectal (rectum) cancer",
+                                                                                 "Stomach",
+                                                                                 "Hodgkin´s Lymphoma (Hodgkin’s disease)",
+                                                                                 "Leukemia (blood) cancer",
+                                                                                 "Non-Hodgkin´s Lymphoma",
+                                                                                 "Prostate cancer",
+                                                                                 "Testicular cancer",
+                                                                                 "Melanoma","Other skin cancer",
+                                                                                 NA,
+                                                                                 "Lung","Bladder cancer",
+                                                                                 "Renal (kidney) cancer",
+                                                                                 "Bone","Brain",
+                                                                                 "Neuroblastoma","Other",
+                                                                                 "Don't know / not sure",
+                                                                                 "Refused"),
                                                                        stringsAsFactors = F) %>%
-                                         mutate(Factor = "CNCRTYPE",Factor.desc = "Type of Cancer",label = NA))
+                                         mutate(Factor = "CNCRTYPE",Factor.desc = "Type of Cancer"))
 ##  combine table 2 factor levels
 cat('\nbinding list dfs into single table2.factor.value.label.df')
 table2.factor.value.label.df <- bind_rows(table2.factor.value.label.list[[1]],table2.factor.value.label.list[[2]])
@@ -209,7 +253,7 @@ table2$print.df.formatted <- left_join(table2$print.df,
                                        by=c("Factor"="Factor","value"="value")) %>%
   mutate(value = coalesce(value,"Don't know / Refused"),
          label = coalesce(label,value)) %>%
-  select(Factor,Factor.desc,label,`n (%)` = Yes)
+  select(Factor,Factor.desc,label,`Prior Cancer: Yes n (%)` = Yes)
 
 ##### table 3 #####
 ##  relationship between cancer status and influenza vaccine
@@ -297,5 +341,5 @@ readme.list <- list(table1.readme = table1.readme,
                     prior.cancer.2x2s.readme = prior.cancer.2x2s.readme,
                     risk.ratios.readme = risk.ratios.readme)
 write.xlsx(t(as.data.frame(readme.list)),file = ofp,
-           sheetName = "README2",col.names = F,
+           sheetName = "README",col.names = F,
            row.names = T,append = T,showNA = F)
