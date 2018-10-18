@@ -15,7 +15,7 @@
 #   project out of the way. We will not be discussing this finalized version of Table 1 in class next week.
 # 
 # 2.	Create table shells for Tables 2 and 3 of the data analysis project. 
-# a.	These shells can be rough drafts –you are not required to have settled 
+# a.	These shells can be rough drafts you are not required to have settled 
 #   on the final content or format of your tables for this assignment. 
 #   I want you to turn something in, however, so I can see who needs 
 #   some help to think through their analysis. 
@@ -292,7 +292,7 @@ names(risk.ratios) = names(prior.cancer.2x2s)
 
 ##### write tables  #####
 cat('\nwriting tables')
-ofp <- file.path(gsub(paste0("/",basename(fp)),"",fp),paste0("VaccineCancer_tables_",Sys.Date(),"_ET.xlsx"))
+ofp <- gsub(basename(fp),paste0("VaccineCancer_tables_",Sys.Date(),"_ET.xlsx"),fp)
 cat('\nwriting table1')
 write.xlsx(as.data.frame(table1$print.df.formatted %>% select(-Factor)),file = ofp,
            sheetName = "table1",col.names = T,row.names = F,append = F,showNA = F)

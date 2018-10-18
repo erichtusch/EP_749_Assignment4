@@ -15,7 +15,7 @@
 #   project out of the way. We will not be discussing this finalized version of Table 1 in class next week.
 # 
 # 2.	Create table shells for Tables 2 and 3 of the data analysis project. 
-# a.	These shells can be rough drafts –you are not required to have settled 
+# a.	These shells can be rough drafts you are not required to have settled 
 #   on the final content or format of your tables for this assignment. 
 #   I want you to turn something in, however, so I can see who needs 
 #   some help to think through their analysis. 
@@ -37,6 +37,7 @@ library(readxl)
 ##  summarize, at minimum, demographics
 ##    sex, age, race/ethnicity, marital status, education, employment, annual income, 
 ##    health coverage, shingles vacc, tetanus vacc
+##TODO##  include overall-population (w/out grouping) in output
 make.table.1 <- function(df,group.var,demog.var){
   ##  group.var is variable to group
   ##  demog.var is character vector of variables to summarize across groups
@@ -118,8 +119,8 @@ demog.var <- c("SEX","FLUSHOT3","PNEUVAC3",
 group.var <- "PRIORCNCR"
 table1 <- make.table.1(cancer.df %>% mutate_at(vars(one_of(group.var)),funs(paste("Prior Cancer:",.,"n (%)",sep=" "))),
                        group.var,demog.var)
+######     make list of data frames for each factor containing values and descriptions  #####
 ##  replace factor values with meaningful info
-#     make list of data frames for each factor containing values and descriptions
 #     then join factor values df to print table
 cat('\ncreating table1.factor.value.label.list')
 table1.factor.value.label.list = list(
@@ -127,7 +128,8 @@ table1.factor.value.label.list = list(
                                   label = c("Yes","No","Don't know / Refused","Refused"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "FLUSHOT3",Factor.desc = "Flu shot in past 12 mo."),
-  PNEUVAC3.values.df = data.frame(value = c(1,2,7,9),label = c("Yes","No","Don't know / Refused","Refused"),
+  PNEUVAC3.values.df = data.frame(value = c(1,2,7,9),
+                                  label = c("Yes","No","Don't know / Refused","Refused"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "PNEUVAC3",Factor.desc = "Pneumonia shot ever"),
   X_AGE_G.values.df = data.frame(value = c(1,2,3,4,5,6),
@@ -145,12 +147,15 @@ table1.factor.value.label.list = list(
                                             "Black, non-Hispanic",
                                             "Hispanic",
                                             "Other race, non-Hispanic",
-                                            "Multi-racial, non-Hispanic","Don't know / Refused"),
+                                            "Multi-racial, non-Hispanic",
+                                            "Don't know / Refused"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "X_RACE_G",Factor.desc = "Race Group"),
   MARITAL.values.df = data.frame(value = c(1,2,3,4,5,6,9),
-                                 label = c("Married","Divorced","Widowed","Separated","Never Married",
-                                           "A member of an unmarried couple","Refused"),
+                                 label = c("Married","Divorced","Widowed",
+                                           "Separated","Never Married",
+                                           "A member of an unmarried couple",
+                                           "Refused"),
                                  stringsAsFactors = F) %>%
     mutate(Factor = "MARITAL",Factor.desc = "Marital Status"),
   X_EDUCAG.values.df = data.frame(value = c(1,2,3,4,9),
@@ -167,27 +172,36 @@ table1.factor.value.label.list = list(
                                             "$25,000 to less than $35,000",
                                             "$35,000 to less than $50,000",
                                             "$50,000 or more",
-                                            "Don’t know/Not sure/Missing"),
+                                            "Don't know/Not sure/Missing"),
                                   stringsAsFactors = F) %>%
     mutate(Factor = "X_INCOMG",Factor.desc = "Income Group"),
   HLTHPLAN.values.df = data.frame(value = c(1,2,7,9),
-                                  label=c("Yes","No","Don't know / Refused","Refused"),stringsAsFactors = F) %>%
+                                  label=c("Yes","No","Don't know / Refused","Refused"),
+                                  stringsAsFactors = F) %>%
     mutate(Factor = "HLTHPLAN",Factor.desc = "Health plan"),
   SHINGLES.values.df = data.frame(value = c(1,2,7,NA),
-                                  label=c("Yes","No","Don't know / Refused","no data"),stringsAsFactors = F) %>%
+                                  label=c("Yes","No","Don't know / Refused","no data"),
+                                  stringsAsFactors = F) %>%
     mutate(Factor = "SHINGLES",Factor.desc = "Shingles vaccine"),
   TNSARCV.values.df = data.frame(value = c(1,2,7,9,NA),
-                                 label=c("Yes","No","Don't know / Refused",'Refused',"no data"),stringsAsFactors = F) %>%
+                                 label=c("Yes","No","Don't know / Refused",
+                                         'Refused',"no data"),
+                                 stringsAsFactors = F) %>%
     mutate(Factor = "TNSARCV",Factor.desc = "Tetanus vacc. within 10 y.")
 )
 ##  combine values with labels into a factor values table
 cat('\nbinding list dfs into single table1.factor.value.label.df')
-table1.factor.value.label.df <- bind_rows(table1.factor.value.label.list[[1]],table1.factor.value.label.list[[2]])
+##TODO##  bind_rows() can take a list as an argument if each item in the list can be bound
+table1.factor.value.label.df <- bind_rows(table1.factor.value.label.list[[1]],
+                                          table1.factor.value.label.list[[2]])
 for(i in 3:length(table1.factor.value.label.list)){
   table1.factor.value.label.df <- bind_rows(table1.factor.value.label.df,table1.factor.value.label.list[[i]])
 }
+##### print-formatting for table 1  #####
+# join factor & value labels to table 1 print.df
 table1$print.df.formatted <- left_join(table1$print.df,
-                                       table1.factor.value.label.df %>% mutate(value = as.character(value)),
+                                       table1.factor.value.label.df %>% 
+                                         mutate(value = as.character(value)),
                                        by=c("Factor"="Factor","value"="value")) %>% 
   mutate(Factor.desc = coalesce(Factor.desc,Factor),
          label = coalesce(label,value)) %>%
@@ -230,7 +244,7 @@ table2.factor.value.label.list <- list(CNCRAGE_G.values.df = data.frame(value = 
                                                                                  "Pancreatic (pancreas) cancer",
                                                                                  "Rectal (rectum) cancer",
                                                                                  "Stomach",
-                                                                                 "Hodgkin´s Lymphoma (Hodgkin’s disease)",
+                                                                                 "Hodgkin's Lymphoma (Hodgkin's disease)",
                                                                                  "Leukemia (blood) cancer",
                                                                                  "Non-Hodgkin´s Lymphoma",
                                                                                  "Prostate cancer",
