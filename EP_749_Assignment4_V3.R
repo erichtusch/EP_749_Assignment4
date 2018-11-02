@@ -27,12 +27,8 @@
 ##  change excel writing library to writexl
 
 ##  TODO  ##
-##  2018 10 21
-#   add full-pop row to table1 DONE
-#   add composite flu vacc/spray DONE
-#   Add Risk ratios to Table 3s
-#   further exclude individuals from the sample:
-#     don't know / refused on crucial bits of info DONE
+##  2018 11 01
+##    include subjects missing data for education and marital status
 
 ##### load libraries  #####
 library(dplyr)
@@ -196,16 +192,14 @@ cancer.df <- cancer.df %>% mutate(IDATE = as.Date(IDATE,format = "%m%d%Y"),
   #   reported prior cancer diagnoses
   #   reported FLUVACC_ANY
   #   reported PNEUVAC3
-  #   Known Marital Status
-  #   known education level
   #   Any income group (including unknown)
   #   Known health plan
   #   Known MEDCOST
   filter(CNCRHAVE %in% c(1,2) &
            FLUVACC_ANY %in% c(1,2) &
            PNEUVAC3 %in% c(1,2) &
-           MARITAL != 9 &
-           X_EDUCAG != 9 &
+           #MARITAL != 9 &
+           #X_EDUCAG != 9 & ##  any marital or education status
            HLTHPLAN %in% c(1,2) &
            MEDCOST %in% c(1,2))
 
